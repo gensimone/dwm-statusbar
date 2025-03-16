@@ -1,0 +1,38 @@
+{
+  "delimiter": " | ",
+  "loglevel": "debug",
+  "modules": [
+    {
+      "time": "3",
+      "path": "ram"
+    },
+    {
+      "time": 1,
+      "path": "cpu"
+    },
+    {
+      "time": 10,
+      "path": "battery"
+    },
+    {
+      "time": 300,
+      "path": "fsmon"
+    },
+    {
+      "time": 5,
+      "path": "temperature"
+    },
+    {
+      "path": "bluetooth",
+      "time": 10
+    },
+    {
+      "time": 5,
+      "path": "volume"
+    },
+    {
+      "time": 10,
+      "path": "network"
+    }
+  ]
+}
