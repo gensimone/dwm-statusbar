@@ -1,0 +1,1 @@
+# DWM Status bar
