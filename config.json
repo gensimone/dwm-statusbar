@@ -1,9 +1,8 @@
 {
   "delimiter": " | ",
-  "loglevel": "debug",
   "modules": [
     {
-      "time": "3",
+      "time": 3,
       "path": "ram"
     },
     {
@@ -23,8 +22,8 @@
       "path": "temperature"
     },
     {
-      "path": "bluetooth",
-      "time": 10
+      "time": 10,
+      "path": "bluetooth"
     },
     {
       "time": 5,
