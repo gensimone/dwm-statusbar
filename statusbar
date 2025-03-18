@@ -4,8 +4,9 @@ import logging
 import os
 import json
 import sys
+from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Set
+from typing import List, Optional, Dict
 from asyncio import create_subprocess_shell, run
 from asyncio.tasks import gather, sleep
 from asyncio.subprocess import PIPE
@@ -32,11 +33,18 @@ class Module:
         )
 
         stdout, stderr = await proc.communicate()
+        msg = f'Module {self.path}'
         if proc.returncode:
-            logger.error(stderr.decode().strip())
+            msg = f'{msg}. Exit-code: {proc.returncode}'
+            if stderr:
+                msg = f'{msg}. Message: {stderr.decode().strip()}'
+            logger.error(msg)
         else:
             self.value = stdout.decode().strip()
-            logger.info(self.value)
+            if not self.value:
+                logger.warning(f'{msg} did not provide any results to display')
+            else:
+                logger.debug(f'{msg}. Message: {stdout.decode().strip()}')
 
 class StatusBar:
     def __init__(self, modules: List[Module], delimiter: Optional[str] = "|") -> None:
@@ -53,7 +61,10 @@ class StatusBar:
 
         _, stderr = await proc.communicate()
         if proc.returncode:
-            logger.error(stderr.decode())
+            msg = f'xsetroot: Exit-code: {proc.returncode}'
+            if stderr:
+                msg = f'{msg}. Message: {stderr.decode().strip()}'
+            logger.error(msg)
 
     def render(self) -> str:
         str_status_bar = ''
@@ -74,8 +85,6 @@ def load_modules(raw_modules: List[Dict]) -> List[Module]:
             raise ValueError('Key "path" must be a string')
         else:
             path = rw['path']
-            # if not path:
-            #     raise FileNotFoundError(f'Missing path')
             if not os.path.dirname(path):
                 path = f'{get_pdir()}/modules/{path}'
             if not os.path.exists(path):
@@ -89,15 +98,15 @@ def load_modules(raw_modules: List[Dict]) -> List[Module]:
         if 'args' in rw:
             module.args = str(rw['args'])
         modules.append(module)
-        logger.debug(f'Loaded {module}')
+        logger.debug(f'Module {module} loaded')
     return modules
 
-def get_user_config() -> Optional[str]:
+def get_user_config_path() -> Optional[str]:
     """
     Obtains the configuration file by looking in these location:
     - $DWM_STATUS_BARList
-    - $XDG_CONFIG_HOME/dwm-status-bar/config.json
-    - $HOME/.dwm-status-bar.json
+    - $XDG_CONFIG_HOME/dwm-statusbar/config.json
+    - $HOME/.dwm-statusbar.json
     """
     dwm_status_bar = os.environ.get('DWM_STATUS_BAR')
     if dwm_status_bar and os.path.exists(dwm_status_bar):
@@ -105,13 +114,13 @@ def get_user_config() -> Optional[str]:
 
     xdg_config_home = os.environ.get('XDG_CONFIG_HOME')
     if xdg_config_home:
-        config = f'{xdg_config_home}/dwm-status-bar/config.json'
+        config = f'{xdg_config_home}/dwm-statusbar/config.json'
         if os.path.exists(config):
             return config
 
     home = os.environ.get('HOME')
     if home:
-        config = f'{home}/.dwm-status-bar.json'
+        config = f'{home}/.dwm-statusbar.json'
         if os.path.exists(config):
             return config
     return None
@@ -135,40 +144,62 @@ def group_modules(modules: List[Module]) -> Dict[float, List[Module]]:
             groups[module.time] = [module]
     return groups
 
+def get_args() -> Namespace:
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--log-level', '-l',
+        choices=['info', 'warning', 'error', 'critical', 'debug'],
+        default='warning'
+    )
+    return parser.parse_args()
+
+def get_int_log_level(log_level_name: str) -> int:
+    return {
+        'debug': 10,
+        'info': 20,
+        'warning': 30,
+        'error': 40,
+        'critical': 50
+    }[log_level_name]
+
 def get_pdir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
-def load_config_file(path: str) -> Dict:
-    with open(path, mode='r') as f:
-        return json.load(f)
-
 async def main() -> None:
+    args = get_args()
     format=(
         "%(name)s:"
         "%(levelname)s:"
-        # "%(taskName)s:"
         "%(message)s"
     )
-    logging.basicConfig(level=logging.DEBUG, format=format)
+    logging.basicConfig(level=get_int_log_level(args.log_level), format=format)
 
-    user_config = get_user_config()
+    config_path = get_user_config_path()
     config = None
-    if user_config:
+    if config_path:
         try:
-            config = load_config_file(user_config)
+            with open(config_path, mode='r') as f:
+                config = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError) as e:
-            logger.error(e)
-    if not config or not user_config:
+            logger.error(
+                f'An error occurred while loading {config_path}: {e}. '
+                'Proceeding with the default configuration.'
+            )
+    if not config or not config_path:
         try:
-            config = load_config_file(f'{get_pdir()}/config.json')
+            config_path = f'{get_pdir()}/config.json'
+            with open(config_path, mode='r') as f:
+                config = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError) as e:
-            logger.critical(e)
+            logger.critical(f'An error occurred while loading the default configuration: {e}.')
             sys.exit(1)
+
+    logger.debug(f'Configuration: {config_path}')
 
     if 'modules' in config:
         modules = load_modules(config['modules'])
     else:
-        logger.error('Missing module section in config file')
+        logger.error(f'Missing module section. Configuration: {config_path}')
         sys.exit(1)
 
     status_bar = StatusBar(modules, delimiter=config.get('delimiter'))
