@@ -4,7 +4,7 @@ bat="$(ls /sys/class/power_supply | grep BAT)"
 if [ "$bat" ]; then
   capacity="$(cat "/sys/class/power_supply/$bat/capacity")"
   status="$(cat "/sys/class/power_supply/$bat/status")"
-  remaining_time="$(acpi -b | cut -d ' ' -f 6)"
+  remaining_time="$(acpi -b | cut -d ' ' -f 5,6)"
   if [ "$capacity" -lt 10 ]; then
     icon=$(if [ "$status" = "Charging" ]; then echo 󰢜; else echo 󰁺; fi)
   elif [ "$capacity" -lt 20 ]; then
@@ -26,10 +26,5 @@ if [ "$bat" ]; then
   else
     icon=$(if [ "$status" = "Charging" ]; then echo 󰂅; else echo 󰁹; fi)
   fi
-
   echo "$icon $capacity% [$remaining_time]"
-
-else
-  # echo "󱉝 No battery"
-  echo ""
 fi
