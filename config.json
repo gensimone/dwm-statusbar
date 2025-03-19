@@ -32,6 +32,10 @@
     {
       "time": 10,
       "path": "network"
+    },
+    {
+      "time": 60,
+      "path": "clock"
     }
   ]
 }
