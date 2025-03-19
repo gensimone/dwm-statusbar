@@ -130,10 +130,10 @@ async def exec_group_once(group: List[Module], status_bar: StatusBar) -> None:
     await status_bar.display()
 
 async def exec_group(time: float, group: List[Module], status_bar: StatusBar) -> None:
-    await gather(*[x.exec() for x in group])
-    await status_bar.display()
-    await sleep(time)
-    await exec_group(time, group, status_bar)
+    while True:
+        await gather(*[x.exec() for x in group])
+        await status_bar.display()
+        await sleep(time)
 
 def group_modules(modules: List[Module]) -> Dict[float, List[Module]]:
     groups: Dict[float, List[Module]] = {}
