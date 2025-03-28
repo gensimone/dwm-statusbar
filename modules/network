@@ -9,8 +9,8 @@ else
   conntype=$(echo "$interface" | awk '{ print substr($1,1,1) }')
   ip=$(echo "$route" | cut -d ' ' -f 9)
   if [ "$conntype" = "e" ]; then
-    echo "󰈀  [$ip]"
+    echo "󰈀 [$ip]"
   else
-    echo "󰖩  [$ip] [$ssid]"
+    echo "󰖩 [$ip] [$ssid]"
   fi
 fi
